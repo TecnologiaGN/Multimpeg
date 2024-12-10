@@ -69,7 +69,7 @@ def center_window(master):
     master.geometry(f"{width}x{height}+{x}+{y}")
 
 def time_to_seconds(time_str):
-    horas, minutes, seconds = map(int, time_str.split(':'))
+    minutes, seconds = map(int, time_str.split(':'))
     return minutes * 60 + seconds
 
 def get_video_duration(file_path):
