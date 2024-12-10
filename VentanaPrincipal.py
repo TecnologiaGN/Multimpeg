@@ -18,7 +18,7 @@ def resource_path(relative_path):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
 
-# Prueba 
+# Prueba
 
 class VentanaPrincipal(QMainWindow):
     def __init__(self):
