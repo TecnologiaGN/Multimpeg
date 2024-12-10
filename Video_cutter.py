@@ -15,7 +15,7 @@ def create_video_cutter_window():
     entry_file_path = tk.Entry(master, width=40)
     entry_file_path.pack(pady=5)
 
-    label_duration = tk.Label(master, text="Duración del video: 00:00")
+    label_duration = tk.Label(master, text="Duración del video: 00:00:00")
     label_duration.pack(pady=5)
 
     tk.Button(master, text="Seleccionar archivo", command=lambda: select_file(entry_file_path, label_duration)).pack(pady=5)
