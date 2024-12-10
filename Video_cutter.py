@@ -32,7 +32,7 @@ def create_video_cutter_window():
     entry_output_name = tk.Entry(master, width=20)
     entry_output_name.pack(pady=5)
 
-    status_label = tk.Label(master, text="Listo para cortar video", fg="blue")
+    status_label = tk.Label(master, text="Listo para cortar video", fg="Blue")
     status_label.pack(pady=10)
 
     tk.Button(master, text="Cortar Video", command=lambda: start_cut_video_thread(entry_file_path, entry_start_time, entry_end_time, entry_output_name, label_duration, status_label)).pack(pady=20)
@@ -201,7 +201,7 @@ def preview_video(entry_file_path, entry_start_time, entry_end_time):
     preview_window.maxsize(1200, 800)
 
     # Canvas para mostrar el video
-    canvas = tk.Canvas(preview_window, bg="blue")
+    canvas = tk.Canvas(preview_window, bg="white")
     canvas.pack(fill="both", expand=True)
 
     # Controles inferiores
