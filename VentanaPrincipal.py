@@ -33,8 +33,6 @@ class VentanaPrincipal(QMainWindow):
         # Crear un QLabel para el texto superior
         label_titulo = QLabel("Seleccione el proceso que desea realizar", self)
         label_titulo.setAlignment(Qt.AlignCenter)  # Centrar el texto
-
-        julian = julian
         
         # Aumentar el tamaño de la letra
         label_titulo.setStyleSheet("font-size: 18px; font-weight: bold;")  # Cambia el tamaño según lo necesites
