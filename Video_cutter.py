@@ -201,7 +201,7 @@ def preview_video(entry_file_path, entry_start_time, entry_end_time):
     preview_window.maxsize(1200, 800)
 
     # Canvas para mostrar el video
-    canvas = tk.Canvas(preview_window, bg="black")
+    canvas = tk.Canvas(preview_window, bg="blue")
     canvas.pack(fill="both", expand=True)
 
     # Controles inferiores
@@ -216,9 +216,10 @@ def preview_video(entry_file_path, entry_start_time, entry_end_time):
     progress_var = tk.DoubleVar(value=0)
 
     def format_time(seconds):
-        minutes = int(seconds // 60)
-        seconds = int(seconds % 60)
-        return f"{minutes:02}:{seconds:02}"
+        hours = int(duration // 3600)
+        minutes = int((duration % 3600) // 60)
+        seconds = int(duration % 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
 
     def toggle_play_pause():
         is_paused[0] = not is_paused[0]
