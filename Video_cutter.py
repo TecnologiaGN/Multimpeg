@@ -20,11 +20,11 @@ def create_video_cutter_window():
 
     tk.Button(master, text="Seleccionar archivo", command=lambda: select_file(entry_file_path, label_duration)).pack(pady=5)
 
-    tk.Label(master, text="Tiempo de inicio (mm:ss):").pack(pady=5)
+    tk.Label(master, text="Tiempo de inicio (hh:mm:ss):").pack(pady=5)
     entry_start_time = tk.Entry(master, width=10)
     entry_start_time.pack(pady=5)
 
-    tk.Label(master, text="Tiempo de fin (mm:ss):").pack(pady=5)
+    tk.Label(master, text="Tiempo de fin (hh:mm:ss):").pack(pady=5)
     entry_end_time = tk.Entry(master, width=10)
     entry_end_time.pack(pady=5)
 
@@ -42,6 +42,15 @@ def create_video_cutter_window():
     center_window(master)
     master.mainloop()
 
+def time_to_seconds(time_str):
+    """Convierte un tiempo en formato hh:mm:ss a segundos."""
+    try:
+        hours, minutes, seconds = map(int, time_str.split(':'))
+        return hours * 3600 + minutes * 60 + seconds
+    except ValueError:
+        raise ValueError("El formato del tiempo debe ser hh:mm:ss")
+
+# Resto del código sin cambios
 def start_cut_video_thread(entry_file_path, entry_start_time, entry_end_time, entry_output_name, label_duration, status_label):
     threading.Thread(target=cut_video, args=(entry_file_path, entry_start_time, entry_end_time, entry_output_name, label_duration, status_label)).start()
 
@@ -68,22 +77,22 @@ def center_window(master):
 
     master.geometry(f"{width}x{height}+{x}+{y}")
 
-def time_to_seconds(time_str):
-    minutes, seconds = map(int, time_str.split(':'))
-    return minutes * 60 + seconds
-
 def get_video_duration(file_path):
     try:
-        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
                '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         duration = float(result.stdout.strip())
-        minutos = int(duration // 60)
-        segundos = int(duration % 60)
-        return f"{minutos:02}:{segundos:02}"
+        hours = int(duration // 3600)
+        minutes = int((duration % 3600) // 60)
+        seconds = int(duration % 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
     except Exception as e:
         print(f"Error al obtener la duración del video: {e}")
-        return "00:00"
+        return "00:00:00"
+
+# El resto del código no necesita modificaciones
+
 
 def cut_video(entry_file_path, entry_start_time, entry_end_time, entry_output_name, label_duration, status_label):
     file_path = entry_file_path.get()
