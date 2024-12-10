@@ -69,7 +69,7 @@ def center_window(master):
     master.geometry(f"{width}x{height}+{x}+{y}")
 
 def time_to_seconds(time_str):
-    minutes, seconds = map(int, time_str.split(':'))
+    horas, minutes, seconds = map(int, time_str.split(':'))
     return minutes * 60 + seconds
 
 def get_video_duration(file_path):
@@ -78,12 +78,13 @@ def get_video_duration(file_path):
                '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         duration = float(result.stdout.strip())
-        minutos = int(duration // 60)
+        horas = int(duration // 3600)
+        minutos = int((duration % 3600) // 60)
         segundos = int(duration % 60)
-        return f"{minutos:02}:{segundos:02}"
+        return f"{horas:02}:{minutos:02}:{segundos:02}"
     except Exception as e:
         print(f"Error al obtener la duración del video: {e}")
-        return "00:00"
+        return "00:00:00"
 
 def cut_video(entry_file_path, entry_start_time, entry_end_time, entry_output_name, label_duration, status_label):
     file_path = entry_file_path.get()
