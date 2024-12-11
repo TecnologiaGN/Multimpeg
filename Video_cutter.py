@@ -201,7 +201,7 @@ def preview_video(entry_file_path, entry_start_time, entry_end_time):
     preview_window.maxsize(1200, 800)
 
     # Canvas para mostrar el video
-    canvas = tk.Canvas(preview_window, bg="white")
+    canvas = tk.Canvas(preview_window, bg="whiteñ")
     canvas.pack(fill="both", expand=True)
 
     # Controles inferiores

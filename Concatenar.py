@@ -36,7 +36,7 @@ def open_file_dialog(entry_file_path, parent_window):
     dialog_window = Toplevel(parent_window)
     dialog_window.withdraw()  # Ocultar la nueva ventana
 
-    file_path = filedialog.askopenfilename(filetypes=[("Archivos de video", "*.mp4;*.wmv;*.avi;*.mov;*.mkv")], parent=parent_window)
+    file_path = filedialog.askopenfilename(filetypes=[("Archivos de video", "*.mp4;*.wmv")], parent=parent_window)
 
     dialog_window.destroy()  # Destruir la ventana emergente después de seleccionar el archivo
 
