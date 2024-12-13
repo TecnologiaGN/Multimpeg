@@ -1,0 +1,52 @@
+/* Estilo Moderno y Tecnológico para PyQt - Tema Blanco */
+
+QWidget {
+    background-color: #FFFFFF; /* Fondo blanco para claridad */
+    color:rgb(0, 0, 0); /* Texto negro para contraste */
+    font-family: "Arial", sans-serif; /* Fuente moderna */
+    font-size: 14px;
+}
+
+QLabel {
+    color:rgb(209, 112, 2); /* Gris oscuro para texto principal */
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+}
+
+QPushButton {
+    background-color: #E8F4FF; /* Azul claro sutil para botones */
+    color: #1E1E1E; /* Texto gris oscuro */
+    border: 1px solid rgb(255, 136, 0); /* Bordes negros */
+    border-radius: 10px; /* Bordes redondeados */
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color:rgb(89, 201, 253); /* Fondo azul más claro al pasar el ratón */
+    color: #000000; /* Texto negro para mayor contraste */
+}
+
+QPushButton:pressed {
+    background-color: #B6D9FF; /* Fondo azul medio al presionar */
+    color: #1E1E1E; /* Texto gris oscuro */
+}
+
+QGraphicsDropShadowEffect {
+    color: #A6CCE3; /* Sombra azul pastel para un efecto suave */
+}
+
+/* Estilo para la imagen */
+QLabel#label_imagen {
+    border: 2px solidrgb(0, 0, 0); /* Borde azul pastel para resaltar */
+    border-radius: 15px;
+    margin: 10px;
+}
+
+/* Layout general */
+QVBoxLayout, QHBoxLayout {
+    margin: 15px;
+    padding: 15px; /* Espaciado entre elementos */
+}

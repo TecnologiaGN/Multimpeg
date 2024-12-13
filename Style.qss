@@ -1,0 +1,52 @@
+/* Estilo Futurista y Tecnológico para PyQt */
+
+QWidget {
+    background-color: #000000; /* Fondo oscuro para un look futurista */
+    color: #FFFFFF; /* Texto blanco para contraste */
+    font-family: "Arial", sans-serif; /* Fuente moderna */
+    font-size: 14px;
+}
+
+QLabel {
+    color: #00D7FF; /* Azul cian para títulos y etiquetas */
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+}
+
+QPushButton {
+    background-color: #30bcd4; /* Botones con fondo oscuro */
+    color: #ffffff; /* Texto verde neón */
+    border: 1px solid #ffffff; /* Bordes verdes */
+    border-radius: 10px; /* Bordes redondeados */
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #ff9900; /* Fondo verde neón al pasar el ratón */
+    color: #1E1E2F; /* Texto oscuro para contraste */
+}
+
+QPushButton:pressed {
+    background-color: #005F3A; /* Fondo verde oscuro al presionar */
+    color: #FFFFFF;
+}
+
+QGraphicsDropShadowEffect {
+    color: #00D7FF; /* Sombra azul cian para etiquetas e imágenes */
+}
+
+/* Estilo para la imagen */
+QLabel#label_imagen {
+    border: 2px solid #00D7FF; /* Borde azul cian para resaltar */
+    border-radius: 15px;
+    margin: 10px;
+}
+
+/* Layout general */
+QVBoxLayout, QHBoxLayout {
+    margin: 15px;
+    padding: 15px; /* Espaciado entre elementos */
+}

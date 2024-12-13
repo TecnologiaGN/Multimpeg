@@ -2,3 +2,8 @@ ConcatenarFinal/
 FormatoFinal/
 PesoFinal/
 VideoFinal/
+AudioFinal/
+build/
+dist/
+__pycache__/
+.venv/

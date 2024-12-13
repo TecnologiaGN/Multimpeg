@@ -8,7 +8,7 @@ def create_video_concatenator_window():
     master = tk.Tk()
     master.title("Concatenar Videos")
 
-    # Elementos de la interfaz
+    # Elementos de la interfaz 
     tk.Label(master, text="Seleccionar Video 1:").pack(pady=10)
     entry_file1_path = tk.Entry(master, width=40)
     entry_file1_path.pack(pady=5)
