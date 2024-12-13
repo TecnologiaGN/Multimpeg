@@ -1,6 +1,7 @@
 import os
 import subprocess
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import cv2
 from PIL import Image, ImageTk
@@ -117,15 +118,48 @@ def cut_video(entry_file_path, entry_start_time, entry_end_time, entry_output_na
         return
 
     try:
+        # Crear una ventana de progreso
+        progress_window = tk.Toplevel()
+        progress_window.title("Cortando Video")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+
+        progress_label = tk.Label(progress_window, text="Iniciando corte de video...", wraplength=250)
+        progress_label.pack(pady=10)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(progress_window, variable=progress_var, maximum=100)
+        progress_bar.pack(padx=20, pady=10, fill='x')
+
+        percentage_label = tk.Label(progress_window, text="0%")
+        percentage_label.pack()
+
         status_label.config(text="Procesando...", fg="orange")
-        output_path = process_video(file_path, inicio, fin, output_name)
-        status_label.config(text=f"Video '{output_name}' cortado", fg="green")
-        messagebox.showinfo("Éxito", f"Video cortado con éxito: {output_path}")
+        
+        def update_progress(percentage):
+            progress_var.set(percentage)
+            percentage_label.config(text=f"{percentage:.1f}%")
+            progress_window.update()
+
+        def run_cutting_process():
+            try:
+                output_path = process_video(file_path, inicio, fin, output_name, update_progress)
+                progress_window.destroy()
+                status_label.config(text=f"Video '{output_name}' cortado", fg="green")
+                messagebox.showinfo("Éxito", f"Video cortado con éxito: {output_path}")
+            except Exception as e:
+                progress_window.destroy()
+                status_label.config(text="Error al cortar el video", fg="red")
+                messagebox.showerror("Error", f"No se pudo cortar el video: {e}")
+
+        # Iniciar el proceso de corte en un hilo separado
+        threading.Thread(target=run_cutting_process, daemon=True).start()
+
     except Exception as e:
         status_label.config(text="Error al cortar el video", fg="red")
         messagebox.showerror("Error", f"No se pudo cortar el video: {e}")
 
-def process_video(file_path, inicio, fin, output_name):
+def process_video(file_path, inicio, fin, output_name, progress_callback):
     inicio_segundos = time_to_seconds(inicio)
     fin_segundos = time_to_seconds(fin)
 
@@ -139,6 +173,27 @@ def process_video(file_path, inicio, fin, output_name):
     if not os.path.exists("VideoFinal"):
         os.makedirs("VideoFinal")
 
+    # Procesamiento con callback de progreso
+    def run_ffmpeg_with_progress(cmd):
+        process = subprocess.Popen(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+        
+        total_duration = duracion_segundos
+        while True:
+            output = process.stderr.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if 'time=' in output:
+                try:
+                    time_str = output.split('time=')[1].split()[0]
+                    hours, minutes, seconds = map(float, time_str.split(':'))
+                    current_time = hours * 3600 + minutes * 60 + seconds
+                    progress = min(100, (current_time / total_duration) * 100)
+                    progress_callback(progress)
+                except Exception:
+                    pass
+        
+        return process.poll() == 0
+
     # Procesamiento para MP4
     if file_extension.lower() == '.mp4':
         cmd = [
@@ -150,10 +205,10 @@ def process_video(file_path, inicio, fin, output_name):
             '-c:a', 'aac',
             '-strict', 'experimental',
             '-movflags', 'faststart',
-            '-loglevel', 'quiet',  # Suprimir salida en CMD
             output_path
         ]
-        subprocess.run(cmd, check=True)
+        if not run_ffmpeg_with_progress(cmd):
+            raise Exception("Error en el proceso de corte de video")
 
     # Procesamiento para WMV
     elif file_extension.lower() == '.wmv':
@@ -170,8 +225,10 @@ def process_video(file_path, inicio, fin, output_name):
             '-movflags', 'faststart',
             output_path
         ]
-        subprocess.run(cmd_wmv, check=True)
+        if not run_ffmpeg_with_progress(cmd_wmv):
+            raise Exception("Error en el proceso de corte de video")
 
+    progress_callback(100)
     return output_path
 
 def preview_video(entry_file_path, entry_start_time, entry_end_time):

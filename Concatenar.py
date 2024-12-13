@@ -1,8 +1,10 @@
 import os
 import subprocess
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel, simpledialog  # Importar simpledialog
-import threading  # Importar el módulo threading
+import tkinter.ttk as ttk
+from tkinter import filedialog, messagebox, Toplevel, simpledialog
+import threading
+import re
 
 def create_video_concatenator_window():
     master = tk.Tk()
@@ -25,28 +27,29 @@ def create_video_concatenator_window():
     entry_output_name = tk.Entry(master, width=20)
     entry_output_name.pack(pady=5)
 
-    tk.Button(master, text="Concatenar Videos", command=lambda: threading.Thread(target=process_videos, args=(entry_file1_path, entry_file2_path, entry_output_name)).start()).pack(pady=20)
+    status_label = tk.Label(master, text="Listo para concatenar", fg="Blue")
+    status_label.pack(pady=10)
+
+    tk.Button(master, text="Concatenar Videos", command=lambda: threading.Thread(target=process_videos, args=(entry_file1_path, entry_file2_path, entry_output_name, status_label)).start()).pack(pady=20)
 
     center_window(master)
-
     master.mainloop()
 
 def open_file_dialog(entry_file_path, parent_window):
-    # Crear una nueva ventana de nivel superior para evitar que la ventana principal se minimice
     dialog_window = Toplevel(parent_window)
-    dialog_window.withdraw()  # Ocultar la nueva ventana
+    dialog_window.withdraw()
 
     file_path = filedialog.askopenfilename(filetypes=[("Archivos de video", "*.mp4;*.wmv")], parent=parent_window)
 
-    dialog_window.destroy()  # Destruir la ventana emergente después de seleccionar el archivo
+    dialog_window.destroy()
 
-    if file_path:  # Solo actualiza si se seleccionó un archivo
+    if file_path:
         entry_file_path.delete(0, tk.END)
         entry_file_path.insert(0, file_path)
 
 def center_window(master):
     width = 500
-    height = 400
+    height = 450
     master.geometry(f"{width}x{height}")
 
     screen_width = master.winfo_screenwidth()
@@ -56,7 +59,7 @@ def center_window(master):
 
     master.geometry(f"{width}x{height}+{x}+{y}")
 
-def process_videos(entry_file1_path, entry_file2_path, entry_output_name):
+def process_videos(entry_file1_path, entry_file2_path, entry_output_name, status_label):
     file1_path = entry_file1_path.get()
     file2_path = entry_file2_path.get()
     output_name = entry_output_name.get()
@@ -69,51 +72,103 @@ def process_videos(entry_file1_path, entry_file2_path, entry_output_name):
         messagebox.showerror("Error", "Los videos deben tener el mismo formato.")
         return
 
-    # Ejecutar en segundo plano usando threading
     try:
-        output_path = concatenate_videos(file1_path, file2_path, output_name)
-        messagebox.showinfo("Éxito", f"Videos concatenados con éxito: {output_path}")
+        progress_window = tk.Toplevel()
+        progress_window.title("Concatenando Videos")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+
+        progress_label = tk.Label(progress_window, text="Iniciando concatenación...", wraplength=250)
+        progress_label.pack(pady=10)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(progress_window, variable=progress_var, maximum=100)
+        progress_bar.pack(padx=20, pady=10, fill='x')
+
+        percentage_label = tk.Label(progress_window, text="0%")
+        percentage_label.pack()
+
+        status_label.config(text="Procesando...", fg="orange")
+
+        def update_progress(percentage):
+            progress_var.set(percentage)
+            percentage_label.config(text=f"{percentage:.1f}%")
+            progress_window.update()
+
+        def run_concatenation_process():
+            try:
+                output_path = concatenate_videos(file1_path, file2_path, output_name, update_progress)
+                progress_window.destroy()
+                status_label.config(text=f"Videos concatenados exitosamente", fg="green")
+                messagebox.showinfo("Éxito", f"Videos concatenados con éxito: {output_path}")
+            except Exception as e:
+                progress_window.destroy()
+                status_label.config(text="Error al concatenar videos", fg="red")
+                messagebox.showerror("Error", f"No se pudo concatenar los videos: {e}")
+
+        threading.Thread(target=run_concatenation_process, daemon=True).start()
+
     except Exception as e:
+        status_label.config(text="Error al concatenar videos", fg="red")
         messagebox.showerror("Error", f"No se pudo concatenar los videos: {e}")
 
-def concatenate_videos(file1_path, file2_path, output_name):
-    # Crea la carpeta "ConcatenarFinal" si no existe
+def get_video_duration(file_path):
+    try:
+        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        return float(result.stdout.strip())
+    except Exception:
+        return 0
+
+def concatenate_videos(file1_path, file2_path, output_name, progress_callback):
     output_dir = "ConcatenarFinal"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Obtener la extensión del primer archivo
     file_ext = os.path.splitext(file1_path)[1].lower()
     output_path = os.path.join(output_dir, f"{output_name}{file_ext}")
 
-    # Verificar si el archivo ya existe
     if os.path.exists(output_path):
-        # Mostrar un mensaje de advertencia
         response = messagebox.askyesno("Archivo existente", f"El archivo {output_path} ya existe. ¿Desea cambiar el nombre?")
         if not response:
-            # Si el usuario no quiere cambiar el nombre, se aborta la operación
             raise RuntimeError("El archivo ya existe, operación cancelada.")
         else:
-            # Si el usuario desea cambiar el nombre, le damos la opción de ingresar uno nuevo
             new_name = simpledialog.askstring("Nuevo nombre", "Ingrese un nuevo nombre para el archivo:")
             if new_name:
                 output_path = os.path.join(output_dir, f"{new_name}{file_ext}")
             else:
                 raise RuntimeError("No se ha ingresado un nuevo nombre. Operación cancelada.")
 
-    # Obtener el nombre de usuario actual
+    total_duration = get_video_duration(file1_path) + get_video_duration(file2_path)
+
     username = os.getenv("username")
     if username:
-        # Reemplazar el nombre del usuario en las rutas por %username%
         file1_path = file1_path.replace(f"C:\\Users\\{username}\\", "%username%\\")
         file2_path = file2_path.replace(f"C:\\Users\\{username}\\", "%username%\\")
 
-    # Crear un archivo temporal de texto con las rutas de los videos usando UTF-8
     with open("videos.txt", "w", encoding="utf-8") as f:
         f.write(f"file '{file1_path}'\n")
         f.write(f"file '{file2_path}'\n")
 
-    # Comando para concatenar los videos
+    def run_ffmpeg_with_progress(cmd):
+        process = subprocess.Popen(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+
+        current_time = 0
+        while True:
+            output = process.stderr.readline()
+            if output == '' and process.poll() is not None:
+                break
+
+            time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
+            if time_match:
+                h, m, s = map(float, time_match.group(1).split(':'))
+                current_time = h * 3600 + m * 60 + s
+                progress = min(100, (current_time / total_duration) * 100)
+                progress_callback(progress)
+
+        progress_callback(100)
+        return process.poll() == 0
+
     cmd = [
         'ffmpeg',
         '-f', 'concat',
@@ -123,10 +178,12 @@ def concatenate_videos(file1_path, file2_path, output_name):
         output_path
     ]
 
-    subprocess.run(cmd, check=True)
-    os.remove("videos.txt")  # Eliminar archivo temporal
+    if not run_ffmpeg_with_progress(cmd):
+        os.remove("videos.txt")
+        raise Exception("Error en el proceso de concatenación de video")
+
+    os.remove("videos.txt")
     return output_path
 
-# Ejecuta esta función si se ejecuta directamente
 if __name__ == "__main__":
     create_video_concatenator_window()
