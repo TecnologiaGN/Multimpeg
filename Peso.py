@@ -1,8 +1,10 @@
 import os
 import subprocess
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import threading
+import re
 
 def create_reduce_video_size_window():
     master = tk.Tk()
@@ -67,7 +69,28 @@ def process_video(entry_file_path, entry_output_name):
             messagebox.showerror("Error", f"El archivo '{output_path}' ya existe en la carpeta de destino. Elija otro nombre.")
             return
 
-        output_path = reduce_video_size(file_path, output_name)
+        progress_window = tk.Toplevel()
+        progress_window.title("Procesando Video")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+
+        progress_label = tk.Label(progress_window, text="Iniciando procesamiento...", wraplength=250)
+        progress_label.pack(pady=10)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(progress_window, variable=progress_var, maximum=100)
+        progress_bar.pack(padx=20, pady=10, fill='x')
+
+        percentage_label = tk.Label(progress_window, text="0%")
+        percentage_label.pack()
+
+        def update_progress(percentage):
+            progress_var.set(percentage)
+            percentage_label.config(text=f"{percentage:.1f}%")
+            progress_window.update()
+
+        output_path = reduce_video_size(file_path, output_name, update_progress)
+        progress_window.destroy()
         messagebox.showinfo("Éxito", f"Tamaño de video reducido con éxito: {output_path}")
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo reducir el tamaño del video: {e}")
@@ -85,7 +108,7 @@ def check_file_exists(output_name, file_path):
         return output_path
     return None
 
-def reduce_video_size(file_path, output_name):
+def reduce_video_size(file_path, output_name, progress_callback):
     output_dir = "PesoFinal"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -105,8 +128,8 @@ def reduce_video_size(file_path, output_name):
             '-b:a', '128k',          # Bitrate de audio reducido
             '-preset', 'fast',       # Velocidad de procesamiento rápida
             '-y',                    # Sobrescribe si el archivo de salida ya existe
-    output_path
-]
+            output_path
+        ]
 
     elif file_extension.lower() == ".wmv":
         cmd = [
@@ -123,9 +146,40 @@ def reduce_video_size(file_path, output_name):
     else:
         raise ValueError("Formato no soportado para reducción de tamaño.")
 
-    # Ejecutar el comando y esperar a que termine antes de continuar
-    subprocess.run(cmd, check=True)
+    total_duration = get_video_duration(file_path)
+    current_time = 0
+
+    process = subprocess.Popen(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+
+    while True:
+        output = process.stderr.readline()
+        if output == '' and process.poll() is not None:
+            break
+
+        time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', output)
+        if time_match:
+            h, m, s = map(float, time_match.groups())
+            current_time = h * 3600 + m * 60 + s
+            progress = min(100, (current_time / total_duration) * 100)
+            progress_callback(progress)
+
+    progress_callback(100)
+
+    if process.poll() != 0:
+        raise RuntimeError("Error en ffmpeg")
+
     return output_path
+
+def get_video_duration(file_path):
+    cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        file_path
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    return float(result.stdout.strip())
 
 if __name__ == "__main__":
     create_reduce_video_size_window()

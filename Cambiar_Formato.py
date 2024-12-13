@@ -1,11 +1,10 @@
 import os
 import subprocess
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import threading
-
-# Lista global de hilos en ejecución
-threads = []
+import re
 
 def create_format_changer_window():
     master = tk.Tk()
@@ -62,37 +61,52 @@ def center_window(master):
 
 def start_conversion_thread(entry_file_path, button, status_label):
     """Inicia la conversión en un hilo separado para no bloquear la UI"""
-    # Desactivar solo el botón de selección mientras se procesan los archivos
     status_label.config(text="Procesando...", fg="orange")
 
-    # Obtener los archivos seleccionados
     files = entry_file_path.get().split(';')
 
-    # Crear un hilo para cada archivo
     for file_path in files:
-        if file_path.strip():  # Verificar que no esté vacío
-            conversion_thread = threading.Thread(target=process_video, args=(file_path.strip(), status_label))
-            threads.append(conversion_thread)
-            conversion_thread.start()
+        if file_path.strip():
+            threading.Thread(target=process_video, args=(file_path.strip(), status_label), daemon=True).start()
 
 def process_video(file_path, status_label):
-    """Procesar el video para cambiar el formato en un hilo separado"""
     if not file_path:
         messagebox.showerror("Error", "Por favor, seleccione un archivo.")
         return
 
     try:
-        output_path = change_format(file_path)
+        progress_window = tk.Toplevel()
+        progress_window.title("Procesando Video")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+
+        progress_label = tk.Label(progress_window, text="Iniciando procesamiento...", wraplength=250)
+        progress_label.pack(pady=10)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(progress_window, variable=progress_var, maximum=100)
+        progress_bar.pack(padx=20, pady=10, fill='x')
+
+        percentage_label = tk.Label(progress_window, text="0%")
+        percentage_label.pack()
+
+        def update_progress(percentage):
+            progress_var.set(percentage)
+            percentage_label.config(text=f"{percentage:.1f}%")
+            progress_window.update()
+
+        output_path = change_format(file_path, update_progress)
+        progress_window.destroy()
         status_label.config(text=f"Formato cambiado con éxito: {output_path}", fg="green")
+
     except Exception as e:
         status_label.config(text=f"Error: {str(e)}", fg="red")
         messagebox.showerror("Error", f"No se pudo cambiar el formato: {str(e)}")
 
-def change_format(file_path):
+def change_format(file_path, progress_callback):
     """Convierte el archivo de video a otro formato (WMV o MP4)"""
     ext = os.path.splitext(file_path)[1].lower()
 
-    # Verificar la extensión y determinar el formato de salida
     if ext == ".mp4":
         new_ext = ".wmv"
     elif ext == ".wmv":
@@ -100,33 +114,55 @@ def change_format(file_path):
     else:
         raise ValueError("Formato no soportado. Solo se admiten .mp4 y .wmv.")
 
-    # Crear directorio de salida si no existe
     output_dir = "FormatoFinal"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Establecer el archivo de salida
     output_path = os.path.join(output_dir, os.path.splitext(os.path.basename(file_path))[0] + new_ext)
 
-    # Verificar si el archivo ya existe en la carpeta de salida
     if os.path.exists(output_path):
-        # Preguntar al usuario si quiere reemplazar el archivo
         response = messagebox.askyesno("Archivo existente", f"El archivo {output_path} ya existe. ¿Desea reemplazarlo?")
-        if not response:  # Si el usuario elige "No"
+        if not response:
             raise RuntimeError(f"El archivo {output_path} no se ha reemplazado.")
-    
-    # Comando FFmpeg para cambiar el formato
+
     command = [
-        "ffmpeg", "-i", file_path,  # Entrada
-        output_path  # Salida
+        "ffmpeg", "-i", file_path, output_path
     ]
 
-    try:
-        subprocess.run(command, check=True, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error al convertir el video: {e.stderr.decode()}")
+    process = subprocess.Popen(command, stderr=subprocess.PIPE, universal_newlines=True)
+
+    total_duration = get_video_duration(file_path)
+    current_time = 0
+
+    while True:
+        output = process.stderr.readline()
+        if output == '' and process.poll() is not None:
+            break
+
+        time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', output)
+        if time_match:
+            h, m, s = map(float, time_match.groups())
+            current_time = h * 3600 + m * 60 + s
+            progress = min(100, (current_time / total_duration) * 100)
+            progress_callback(progress)
+
+    progress_callback(100)
+
+    if process.poll() != 0:
+        raise RuntimeError("Error en ffmpeg")
 
     return output_path
+
+def get_video_duration(file_path):
+    cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        file_path
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    return float(result.stdout.strip())
 
 if __name__ == "__main__":
     create_format_changer_window()

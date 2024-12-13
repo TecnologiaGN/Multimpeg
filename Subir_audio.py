@@ -1,9 +1,10 @@
 import os
+import re
 import subprocess
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 from threading import Thread
-
 
 def create_audio_uploader_window():
     master = tk.Tk()
@@ -35,13 +36,11 @@ def create_audio_uploader_window():
     center_window(master)
     master.mainloop()
 
-
 def select_file(entry_file_path):
     file_path = filedialog.askopenfilename(filetypes=[("Archivos de audio", "*.*")])
     if file_path:
         entry_file_path.delete(0, tk.END)
         entry_file_path.insert(0, file_path)
-
 
 def center_window(master):
     width = 500
@@ -55,22 +54,17 @@ def center_window(master):
 
     master.geometry(f"{width}x{height}+{x}+{y}")
 
-
 def start_audio_processing(master, file_path, output_name, volume_level):
     if not file_path or not output_name:
         messagebox.showerror("Error", "Por favor, complete todos los campos.")
         return
 
-    # Verificar si el archivo ya existe
     if check_existing_file(output_name, file_path):
         return
 
-    # Deshabilitar botón y lanzar un hilo
     Thread(target=process_audio, args=(master, file_path, output_name, volume_level), daemon=True).start()
 
-
 def check_existing_file(output_name, file_path):
-    """Verifica si el archivo de salida ya existe en la carpeta de destino."""
     output_dir = "AudioFinal"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -87,41 +81,91 @@ def check_existing_file(output_name, file_path):
 
     return False
 
-
 def process_audio(master, file_path, output_name, volume_level):
     try:
-        output_path = adjust_volume(file_path, output_name, volume_level)
-        master.after(0, lambda: messagebox.showinfo("Éxito", f"Audio ajustado con éxito: {output_path}"))
+        progress_window = tk.Toplevel()
+        progress_window.title("Procesando Audio")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+
+        progress_label = tk.Label(progress_window, text="Iniciando procesamiento...", wraplength=250)
+        progress_label.pack(pady=10)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(progress_window, variable=progress_var, maximum=100)
+        progress_bar.pack(padx=20, pady=10, fill='x')
+
+        percentage_label = tk.Label(progress_window, text="0%")
+        percentage_label.pack()
+
+        def update_progress(percentage):
+            progress_var.set(percentage)
+            percentage_label.config(text=f"{percentage:.1f}%")
+            progress_window.update()
+
+        def run_audio_process():
+            try:
+                output_path = adjust_volume(file_path, output_name, volume_level, update_progress)
+                progress_window.destroy()
+                messagebox.showinfo("Éxito", f"Audio ajustado con éxito: {output_path}")
+            except Exception as e:
+                progress_window.destroy()
+                messagebox.showerror("Error", f"No se pudo ajustar el audio: {e}")
+
+        Thread(target=run_audio_process, daemon=True).start()
+
     except Exception as e:
-        master.after(0, lambda: messagebox.showerror("Error", f"No se pudo ajustar el audio: {e}"))
+        messagebox.showerror("Error", f"No se pudo iniciar el proceso de audio: {e}")
 
-
-def adjust_volume(file_path, output_name, volume_level):
+def adjust_volume(file_path, output_name, volume_level, progress_callback):
     output_dir = "AudioFinal"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Mantener el formato original del archivo
     file_extension = os.path.splitext(file_path)[1]
     output_path = os.path.join(output_dir, f"{output_name}{file_extension}")
 
-    # Comando para ajustar el volumen
     cmd = [
         "ffmpeg",
         "-i", file_path,
-        "-af", f"volume={volume_level}",  # Ajustar el volumen dinámicamente
+        "-af", f"volume={volume_level}",
         output_path,
     ]
 
-    # Ejecutar comando de manera no bloqueante
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
+    process = subprocess.Popen(cmd, stderr=subprocess.PIPE, universal_newlines=True)
 
-    if process.returncode != 0:
-        raise RuntimeError(f"Error en ffmpeg: {stderr.decode().strip()}")
+    total_duration = get_audio_duration(file_path)
+    current_time = 0
+
+    while True:
+        output = process.stderr.readline()
+        if output == '' and process.poll() is not None:
+            break
+
+        time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', output)
+        if time_match:
+            h, m, s = map(float, time_match.groups())
+            current_time = h * 3600 + m * 60 + s
+            progress = min(100, (current_time / total_duration) * 100)
+            progress_callback(progress)
+
+    progress_callback(100)
+
+    if process.poll() != 0:
+        raise RuntimeError("Error en ffmpeg")
 
     return output_path
 
+def get_audio_duration(file_path):
+    cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        file_path
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    return float(result.stdout.strip())
 
 if __name__ == "__main__":
     create_audio_uploader_window()
