@@ -195,7 +195,7 @@ def process_video(file_path, inicio, fin, output_name, progress_callback):
         return process.poll() == 0
 
     # Procesamiento para MP4
-    if file_extension.lower() == '.mp4':
+    if file_extension.lower() == '.mp4,.mp3,.aac':
         cmd = [
             'ffmpeg',
             '-ss', str(inicio_segundos),
